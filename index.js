@@ -1,17 +1,19 @@
 const canvas = document.getElementById("canvas1")
 const context = canvas.getContext("2d")
+const dt = 0.016;
 
+const speed = 1000;
+const BULLET_SPEED = 2000;
+let moved = false;
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-window.addEventListener("resize", ()=>{
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-})
-let moved = false;
-let r = 39;
-let speed = 1000;
-
+function drawCircle(x, y, r){
+        context.fillStyle = "#6495ED"
+        context.beginPath()
+        context.arc(x, y, r, 0, Math.PI * 2)
+        context.fill()
+}
 class tutorialPopup {
     constructor(text){
         this.alpha = 0;
@@ -25,7 +27,7 @@ class tutorialPopup {
         context.textAlign = "center"
     }
     fadeIn(){
-        if ( this.alpha <= 1){
+        if ( this.alpha <= 1 && this.alpha >= 0){
             this.alpha += this.dalpha * dt
         }
     }
@@ -35,9 +37,6 @@ class tutorialPopup {
             this.alpha = 1
             this.dalpha = -1
         }
-    }
-    update(){
-        this.alpha = this.dalpha * dt
     }
 }
 let popup = new tutorialPopup("WASD to move around")
@@ -59,6 +58,10 @@ class v2 {
     length(){
         return Math.sqrt(this.x * this.x + this.y * this.y)
     }
+    normalize(){
+        let n = this.length()
+        return new v2(this.x / n, this.y / n)
+    }
 }
 let directionSet = new Set()
 let directionMap = {
@@ -67,18 +70,63 @@ let directionMap = {
     'KeyA': new v2(-speed, 0),
     'KeyD': new v2(speed, 0)
 }
-let pos = new v2(canvas.width / 2, canvas.height / 3)
+class Game {
+    constructor(){
+        this.playerPos = new v2(canvas.width / 2, canvas.height / 3)
+        this.mousePos = new v2(0, 0)
+        this.playerRaius = 39
+        this.bullets = new Set()
+
+    }
+    render(){
+        drawCircle(this.playerPos.x, this.playerPos.y, this.playerRaius)
+        for ( let bullet of this.bullets){
+            bullet.render()
+        }
+    }
+    update(){
+        this.playerPos = this.playerPos.add(vel.scale(dt))
+        for ( let bullet of this.bullets){
+            bullet.update()
+        }
+    }
+    mouseDown(e){
+        let mousePos = new v2(e.screenX, e.screenY)
+        let bulletVel = mousePos.sub(this.playerPos).normalize().scale(BULLET_SPEED)
+
+        this.bullets.add(new Bullet(this.playerPos, bulletVel))
+    }
+}
+let game = new Game()
 let vel = new v2(0 ,0)
 
-function draw(){
-    context.fillStyle = "#6495ED"
-    context.beginPath()
-    context.arc(pos.x, pos.y, r, 0, Math.PI * 2)
-    context.fill()
+class Bullet {
+    constructor(pos, vel){
+        this.pos = pos
+        this.vel = vel
+        this.bulletRaius = 19
+    }
+    update(){
+        this.pos = this.pos.add(this.vel.scale(dt))
+    }
+    render(){
+        drawCircle(this.pos.x, this.pos.y, this.bulletRaius)
+    }
+
 }
-const dt = 0.016;
-window.addEventListener('keydown', (e)=>{
-    if (e.code in directionMap){
+
+function loop() {
+    context.clearRect(0, 0, canvas.width, canvas.height)
+    game.update()
+    game.render()
+    popup.renderText()
+    popup.fadeIn()
+    popup.fadeOut()
+    window.requestAnimationFrame(loop)
+}
+loop()
+
+window.addEventListener('keydown', (e)=>{ if (e.code in directionMap){
         if (!directionSet.has(e.code)){
             directionSet.add(e.code)
             vel = vel.add(directionMap[e.code])
@@ -93,20 +141,11 @@ window.addEventListener('keyup', (e)=>{
         }
     }
 })
+window.addEventListener("resize", ()=>{
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+})
+window.addEventListener('mousedown', e =>{
+    game.mouseDown(e)
+})
 
-function loop() {
-
-
-    context.clearRect(0, 0, canvas.width, canvas.height)
-    pos = pos.add(vel.scale(dt))
-    draw()
-    popup.renderText()
-    popup.fadeIn()
-    popup.fadeOut()
-
-
-
-
-    window.requestAnimationFrame(loop)
-}
-loop()
