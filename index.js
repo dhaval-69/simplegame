@@ -1,6 +1,7 @@
 const canvas = document.getElementById("canvas1")
 const context = canvas.getContext("2d")
 const dt = 0.016;
+const bullet_lifetime = 0.75;
 
 const speed = 1000;
 const BULLET_SPEED = 2500;
@@ -83,8 +84,7 @@ class Game {
         this.playerPos = new v2(canvas.width / 2, canvas.height / 2)
         this.mousePos = new v2(0, 0)
         this.playerRaius = 39
-        this.bullets = new Set()
-
+        this.bullets = []
     }
     render(){
         drawCircle(this.playerPos.x, this.playerPos.y, this.playerRaius)
@@ -97,12 +97,13 @@ class Game {
         for ( let bullet of this.bullets){
             bullet.update()
         }
+        this.bullets = this.bullets.filter(bullet => bullet.lifetime > 0)
     }
     mouseDown(e){
         let mousePos = new v2(e.offsetX, e.offsetY)
         let bulletVel = mousePos.sub(this.playerPos).normalize().scale(BULLET_SPEED)
 
-        this.bullets.add(new Bullet(this.playerPos, bulletVel))
+        this.bullets.push(new Bullet(this.playerPos, bulletVel))
     }
 }
 let game = new Game()
@@ -113,9 +114,15 @@ class Bullet {
         this.pos = pos
         this.vel = vel
         this.bulletRaius = 19
+        this.lifetime = bullet_lifetime
     }
     update(){
         this.pos = this.pos.add(this.vel.scale(dt))
+        if (this.lifetime > 0){
+            this.lifetime -= dt
+        }else {
+            this.lifetime = 0
+        }
     }
     render(){
         drawCircle(this.pos.x, this.pos.y, this.bulletRaius)
@@ -157,4 +164,3 @@ window.addEventListener('mousedown', e =>{
     game.mouseDown(e)
     }
 })
-
