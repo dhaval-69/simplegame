@@ -4,7 +4,6 @@ const dt = 0.016;
 
 const speed = 1000;
 const BULLET_SPEED = 2500;
-let moved = false;
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
@@ -15,15 +14,18 @@ function drawCircle(x, y, r){
         context.fill()
 }
 class tutorialPopup {
-    constructor(text){
+    constructor(text, x, y){
         this.alpha = 0;
         this.dalpha = 1
         this.text = text
+        this.x = x
+        this.y = y
+        this.moved = false
     }
     renderText(){
-        context.fillStyle = `rgba(255, 255, 255, ${popup.alpha})`
+        context.fillStyle = `rgba(255, 255, 255, ${this.alpha})`
         context.font = "30px Arial"
-        context.fillText(this.text, canvas.width / 2, canvas.height / 2)
+        context.fillText(this.text, this.x, this.y)
         context.textAlign = "center"
     }
     fadeIn(){
@@ -32,14 +34,20 @@ class tutorialPopup {
         }
     }
     fadeOut(){
-        if (!moved && vel.length() > 0){
-            moved = true
+        if (!this.moved && vel.length() > 0){
+            this.moved = true
             this.alpha = 1
             this.dalpha = -1
         }
     }
+    update(){
+        this.renderText()
+        this.fadeIn()
+        this.fadeOut()
+    }
 }
-let popup = new tutorialPopup("WASD to move around")
+let tut1 = new tutorialPopup("WASD to move around", canvas.width / 2, canvas.height / 3)
+let tut2 = new tutorialPopup("Left click to shoot", canvas.width / 2, canvas.height / 3 + 40)
 
 class v2 {
     constructor(x, y){
@@ -72,7 +80,7 @@ let directionMap = {
 }
 class Game {
     constructor(){
-        this.playerPos = new v2(canvas.width / 2, canvas.height / 3)
+        this.playerPos = new v2(canvas.width / 2, canvas.height / 2)
         this.mousePos = new v2(0, 0)
         this.playerRaius = 39
         this.bullets = new Set()
@@ -117,11 +125,10 @@ class Bullet {
 
 function loop() {
     context.clearRect(0, 0, canvas.width, canvas.height)
+    tut1.update()
+    tut2.update()
     game.update()
     game.render()
-    popup.renderText()
-    popup.fadeIn()
-    popup.fadeOut()
     window.requestAnimationFrame(loop)
 }
 loop()
@@ -146,6 +153,8 @@ window.addEventListener("resize", ()=>{
     canvas.height = window.innerHeight;
 })
 window.addEventListener('mousedown', e =>{
+    if (e.button === 0){
     game.mouseDown(e)
+    }
 })
 
