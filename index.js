@@ -3,7 +3,7 @@ const context = canvas.getContext("2d")
 const dt = 0.016;
 
 const speed = 1000;
-const BULLET_SPEED = 2000;
+const BULLET_SPEED = 2500;
 let moved = false;
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
@@ -91,7 +91,7 @@ class Game {
         }
     }
     mouseDown(e){
-        let mousePos = new v2(e.screenX, e.screenY)
+        let mousePos = new v2(e.offsetX, e.offsetY)
         let bulletVel = mousePos.sub(this.playerPos).normalize().scale(BULLET_SPEED)
 
         this.bullets.add(new Bullet(this.playerPos, bulletVel))
