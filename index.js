@@ -1,15 +1,16 @@
 const canvas = document.getElementById("canvas1")
 const context = canvas.getContext("2d")
-const dt = 0.016;
 const bullet_lifetime = 0.75;
 const PLAYER_SPEED = 1000;
 const ENEMY_SPEED = PLAYER_SPEED / 3;
 const BULLET_SPEED = 2000;
 const BULLET_RADIUS = 19;
 const ENEMY_RADIUS = 39;
-const ENEMY_COLOR = "red";
-const PLAYER_COLOR = "#6495ED";
+const ENEMY_COLOR = "#6495ED";
+const PLAYER_COLOR = "#f43841";
 const magnitude = PLAYER_SPEED;
+const ENEMY_SPAWN_DISTANCE = 1000.0;
+const ENEMY_SPAWN_COOLDOWN = 1.0;
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
@@ -47,7 +48,7 @@ class tutorialPopup {
             this.dalpha = -1
         }
     }
-    update() {
+    update(dt) {
         this.renderText()
         if (this.alpha <= 1 && this.alpha >= 0) {
             this.alpha += this.dalpha * dt
@@ -83,6 +84,12 @@ class v2 {
         return this.sub(that).len()
     }
 }
+function polarv2(mag, dir) {
+    return new v2(Math.cos(dir) * mag, Math.sin(dir) * mag);
+}
+function randomDir() {
+    return Math.random() * 2 * Math.PI;
+}
 let directionSet = new Set()
 let directionMap = {
     'KeyW': new v2(0, -PLAYER_SPEED),
@@ -98,15 +105,19 @@ class Particle {
         this.size = Math.random() * 9 + 1;
         this.speedX = Math.random() * 4 - 2;
         this.speedY = Math.random() * 4 - 2;
-        this.color = `rgba(255, 0, 0, ${Math.random()})`
+        this.alpha = this.size/ 20;
+        this.color = `rgba(100, 149, 237, ${this.alpha})`
     }
     update() {
         this.x += this.speedX
         this.y += this.speedY
-        if (this.size > 0.3) this.size -= 0.2;
+        if (this.size > 0.3) {
+            this.size -= 0.2
+        };
+        this.alpha = this.size / 20;
     }
     render() {
-        context.fillStyle = this.color
+        context.fillStyle = this.color;
         context.beginPath();
         context.arc(this.x, this.y, this.size, 0, Math.PI * 2)
         context.closePath();
@@ -122,7 +133,7 @@ class Enemy {
     render() {
         drawCircle(this.pos, ENEMY_RADIUS, ENEMY_COLOR)
     }
-    update(followPos) {
+    update(followPos, dt) {
         let vel = followPos.sub(this.pos).norm().scale(ENEMY_SPEED)
         this.pos = this.pos.add(vel.scale(dt))
     }
@@ -133,21 +144,26 @@ class Game {
         this.ref = new v2(canvas.width / 2, canvas.height / 2)
         this.mousePos = new v2(0, 0)
         this.playerRaius = 39
+        this.enemy_cooldown = ENEMY_SPAWN_COOLDOWN
         this.bullets = []
         this.enemies = []
         this.particles = []
 
-        //this.enemies.push(new Enemy(new v2(window.innerWidth + Math.random() * 100, window.innerWidth + Math.random() * 100)))
     }
     createParticle(pos) {
-        for (let i = 0; i < 10; i++) {
+        let count = Math.floor(Math.random() * 10 + 3);
+        for (let i = 0; i < count; i++) {
             this.particles.push(new Particle(pos))
         }
     }
     enemy_spawner() {
-        let pos = new v2(Math.random() * canvas.width, Math.random() * canvas.height)
-        let rel_pos = pos.sub(this.ref).norm().scale(magnitude)
-        this.enemies.push(new Enemy(rel_pos))
+        if (this.enemy_cooldown <= 0) {
+            this.enemy_cooldown = ENEMY_SPAWN_COOLDOWN;
+            let dir = randomDir();
+            this.enemies.push(new
+                Enemy(this.playerPos.add(polarv2(ENEMY_SPAWN_DISTANCE, dir))))
+        }
+        this.enemy_cooldown -= 0.01;
     }
     render() {
         drawCircle(this.playerPos, this.playerRaius, PLAYER_COLOR)
@@ -161,14 +177,14 @@ class Game {
             particle.render()
         }
     }
-    update() {
+    update(dt) {
         this.playerPos = this.playerPos.add(vel.scale(dt))
         for (let bullet of this.bullets) {
-            bullet.update()
+            bullet.update(dt)
         }
         this.bullets = this.bullets.filter(bullet => bullet.lifetime > 0)
         for (let enemy of this.enemies) {
-            enemy.update(this.playerPos)
+            enemy.update(this.playerPos, dt)
         }
         this.enemies = this.enemies.filter(enemy => enemy.ded === false)
         for (let enemy of this.enemies) {
@@ -183,9 +199,10 @@ class Game {
         for (let particle of this.particles) {
             if (this.particles.length > 0) {
                 this.particles = this.particles.filter(particle => particle.size > 0.4)
-                particle.update()
+                particle.update(dt)
             }
         }
+        this.enemy_spawner();
     }
     mouseDown(e) {
         let mousePos = new v2(e.offsetX, e.offsetY)
@@ -196,9 +213,6 @@ class Game {
 }
 let game = new Game()
 let vel = new v2(0, 0)
-setInterval(() => {
-    game.enemy_spawner()
-}, 1000);
 
 
 class Bullet {
@@ -208,7 +222,7 @@ class Bullet {
         this.bulletRaius = BULLET_RADIUS
         this.lifetime = bullet_lifetime
     }
-    update() {
+    update(dt) {
         this.pos = this.pos.add(this.vel.scale(dt))
         if (this.lifetime > 0) {
             this.lifetime -= dt
@@ -221,16 +235,21 @@ class Bullet {
     }
 
 }
-
-function loop() {
+let start;
+function loop(timestamp) {
+    if (start === undefined) {
+        start = timestamp;
+    }
+    const dt = (timestamp - start) / 1000;
+    start = timestamp;
     context.clearRect(0, 0, canvas.width, canvas.height)
-    game.update()
+    game.update(dt)
     game.render()
-    tut1.update()
-    tut2.update()
+    tut1.update(dt)
+    tut2.update(dt)
     window.requestAnimationFrame(loop)
 }
-loop()
+window.requestAnimationFrame(loop)
 
 window.addEventListener('keydown', (e) => {
     if (e.code in directionMap) {
